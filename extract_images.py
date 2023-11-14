@@ -8,6 +8,18 @@ from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions
 from sensor_msgs.msg import Image
 import argparse
 
+def deserialize_img(msg, dims):
+    # Deserialize the message
+    deserialized_msg = deserialize_message(msg, Image)
+    deserialized_img = np.asarray(deserialized_msg.data)
+
+    # Extract the timestamp for filename creation
+    timestamp = deserialized_msg.header.stamp
+
+    # Get back the original dimensions of image
+    img_shape = (deserialized_msg.height, deserialized_msg.width, dims)
+    deserialized_img = np.reshape(deserialized_img, img_shape)
+    return (deserialized_img, timestamp)
 
 def convert_db3_to_images(db_file, output_dir, image_type):
     # Create output directory if it doesn't exist
@@ -35,21 +47,16 @@ def convert_db3_to_images(db_file, output_dir, image_type):
         if image_type == 'raw':
             if topic.endswith('/raw'):
                 try:
-                    # Deserialize the message
-                    deserialized_msg = deserialize_message(msg, Image)
-                    deserialized_img = np.asarray(deserialized_msg.data)
+                    deserialized_img, timestamp = deserialize_img(msg, 3)
 
-                    # Extract the timestamp for filename creation
-                    timestamp = deserialized_msg.header.stamp
-                    image_filename = os.path.join(output_dir, 'image_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
-
-                    # Get back the original dimensions of image
-                    img_shape = (deserialized_msg.height, deserialized_msg.width, 3)
-                    deserialized_img = np.reshape(deserialized_img, img_shape)
+                    if 'left' in topic:
+                        image_filename = os.path.join(output_dir, 'image_left_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
+                    elif 'right' in topic:
+                        image_filename = os.path.join(output_dir, 'image_right_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
 
                     # Save the image to a file
                     cv2.imwrite(image_filename, deserialized_img)
-
+                    print('Image saved to {}'.format(image_filename))
 
                 except Exception as e:
                     print('Error processing image: {}'.format(e))
@@ -57,21 +64,16 @@ def convert_db3_to_images(db_file, output_dir, image_type):
         if image_type == 'depth':
             if topic.endswith('/depth'):
                 try:
-                    # Deserialize the message
-                    deserialized_msg = deserialize_message(msg, Image)
-                    deserialized_img = np.asarray(deserialized_msg.data)
+                    deserialized_img, timestamp = deserialize_img(msg, 2)
+                    image_filename = os.path.join(output_dir, 'image_depth_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
 
-                    # Extract the timestamp for filename creation
-                    timestamp = deserialized_msg.header.stamp
-                    image_filename = os.path.join(output_dir, 'image_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
-
-                    img_shape = (deserialized_msg.height, deserialized_msg.width, 2)
-                    deserialized_img = np.reshape(deserialized_img, img_shape)
+                    # Save image to a file
                     cv2.imwrite(image_filename, deserialized_img[:,:, 1])
                     print('Image saved to {}'.format(image_filename))
 
                 except Exception as e:
                     print('Error processing image: {}'.format(e))
+        
 
 
 if __name__ == '__main__':
