@@ -48,11 +48,10 @@ def convert_db3_to_images(db_file, output_dir, image_type):
             if topic.endswith('/raw'):
                 try:
                     deserialized_img, timestamp = deserialize_img(msg, 3)
-
-                    if 'left' in topic:
-                        image_filename = os.path.join(output_dir, 'image_left_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
-                    elif 'right' in topic:
-                        image_filename = os.path.join(output_dir, 'image_right_{}_{}.jpg'.format(timestamp.sec, timestamp.nanosec))
+                    tokens = topic.split('/')
+                    topic_name = tokens[2]
+                    
+                    image_filename = os.path.join(output_dir, '{}_{}_{}.jpg'.format(topic_name, timestamp.sec, timestamp.nanosec))
 
                     # Save the image to a file
                     cv2.imwrite(image_filename, deserialized_img)
